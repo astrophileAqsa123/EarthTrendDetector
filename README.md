@@ -26,6 +26,17 @@ The app works without a Groq key. AI features fall back to built-in text and key
 The AI never calculates. It receives only numbers already computed by `stats_engine.py`, is told to use
 no other numbers, to call non-significant results "no real trend", and to phrase causes only as possibilities.
 
+## Pages
+| Page | File | For |
+|---|---|---|
+| Home (landing) | `views/home.py` | Where to start |
+| Cases | `views/cases.py` | Six ready-made questions |
+| Build your own | `views/build.py` | Guided form + question box |
+| Results | `views/results.py` | Trend at one or two places |
+| Trend scanner | `views/scanner.py` | Every variable at once |
+| Regional map | `views/regional_map.py` | Trend test over a grid |
+| How it works | `views/how_it_works.py` | Method and limits |
+
 ## Files
-`app.py` UI · `stats_engine.py` statistics · `scanner.py` variable ranking and regional grid ·
+`app.py` entry point + navigation · `core.py` shared state and result blocks · `ui.py` theme and design · `.streamlit/config.toml` colours · `stats_engine.py` statistics · `scanner.py` variable ranking and regional grid ·
 `data_fetcher.py` NASA POWER client · `ai_helper.py` Groq · `plain.py` plain-language text · `config.py` catalog and stories
