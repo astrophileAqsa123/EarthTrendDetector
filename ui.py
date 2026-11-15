@@ -62,13 +62,14 @@ def _mix(v: float) -> str:
     return _STOPS[-1][1]
 
 
-def _stripes(n: int = 72) -> str:
-    """Decorative 'climate stripes' in the app's own rising/falling colours. Not tied to any data."""
+def _stripes(n: int = 64) -> str:
+    """Decorative 'climate stripes' in the app's own rising/falling colours. Not tied to any data.
+    They paint in left to right once when the landing page opens (see .stripes span in the CSS)."""
     rnd = random.Random(11)
     cells = []
     for i in range(n):
         v = -0.6 + 1.5 * (i / (n - 1)) ** 1.4 + rnd.uniform(-0.3, 0.3)
-        cells.append(f'<span style="background:{_mix(v)}"></span>')
+        cells.append(f'<span style="--i:{i};background:{_mix(v)}"></span>')
     return "".join(cells)
 
 
@@ -84,6 +85,16 @@ def hero(title: str, sub: str):
   <div class="stripes" aria-hidden="true">{_stripes()}</div>
 </div>
 """, unsafe_allow_html=True)
+
+
+def variable_groups(variables: dict, categories: list) -> str:
+    """HTML list of every tracked variable, grouped by topic. Built from config so it never goes out of date."""
+    blocks = []
+    for cat in categories:
+        items = "".join(f"<li>{v['plain_name'][:1].upper() + v['plain_name'][1:]}</li>"
+                        for v in variables.values() if v["category"] == cat)
+        blocks.append(f'<section class="group"><h4>{clean(cat)}</h4><ul>{items}</ul></section>')
+    return f'<div class="groups">{"".join(blocks)}</div>'
 
 
 def page_header(title: str, desc: str):
@@ -140,16 +151,19 @@ html, body, .stApp, [data-testid="stAppViewContainer"], .stApp button, .stApp in
 .stMarkdown p {{ max-width:75ch; }}
 
 /* ---- hero */
-.hero {{ background:var(--ink); color:#fff; border-radius:14px; overflow:hidden; margin-bottom:1.1rem; }}
-.hero-body {{ padding:30px 34px 24px; }}
-.hero-title {{ font-family:'Bricolage Grotesque', {FONT_STACK}; font-weight:700; font-size:2.5rem;
-  line-height:1.05; letter-spacing:-0.025em; color:#fff; }}
-.stApp .hero p.hero-sub {{ margin:.85rem 0 0; max-width:62ch; color:#C3D1DD; font-size:1.02rem; line-height:1.5; }}
-.stripes {{ display:flex; height:30px; }}
+.hero {{ background:var(--ink); color:#fff; border-radius:16px; overflow:hidden; margin-bottom:0; }}
+.hero-body {{ padding:46px 48px 38px; }}
+.hero-title {{ font-family:'Bricolage Grotesque', {FONT_STACK}; font-weight:700; font-size:3.5rem;
+  line-height:1.02; letter-spacing:-0.03em; color:#fff; max-width:15ch; }}
+.stApp .hero p.hero-sub {{ margin:1.1rem 0 0; max-width:58ch; color:#C3D1DD; font-size:1.1rem; line-height:1.55; }}
+.stripes {{ display:flex; height:124px; }}
+.stripes span {{ flex:1; transform-origin:bottom; animation:stripe-in .7s cubic-bezier(.2,.7,.2,1) both;
+  animation-delay:calc(var(--i) * 14ms); }}
+@keyframes stripe-in {{ from {{ transform:scaleY(0); }} to {{ transform:scaleY(1); }} }}
+@media (prefers-reduced-motion: reduce) {{ .stripes span {{ animation:none; }} }}
 .page-head {{ margin:.2rem 0 1.2rem; }}
 .page-title {{ font-family:'Bricolage Grotesque', {FONT_STACK}; font-weight:700; font-size:2rem; letter-spacing:-0.02em; line-height:1.1; color:var(--ink); }}
 .stApp .page-head p.page-desc {{ margin:.5rem 0 0; color:var(--muted); font-size:1rem; max-width:70ch; }}
-.stripes span {{ flex:1; }}
 
 /* ---- sidebar */
 [data-testid="stSidebar"] {{ background:#fff; border-right:1px solid var(--line); }}
@@ -184,18 +198,43 @@ html, body, .stApp, [data-testid="stAppViewContainer"], .stApp button, .stApp in
 .conf-text {{ color:var(--muted); font-size:.93rem; }}
 
 /* ---- cards (story + builder) */
-[class*="st-key-choice-"], [class*="st-key-step-"], [class*="st-key-casecard-"], .st-key-builder, .st-key-casefile {{ background:#fff; border:1px solid var(--line) !important;
+[class*="st-key-casecard-"], .st-key-builder, .st-key-casefile {{ background:#fff; border:1px solid var(--line) !important;
   border-radius:12px; padding:18px 20px; }}
 [class*="st-key-casecard-"] h4 {{ margin:0 0 .35rem; }}
 [class*="st-key-casecard-"] p {{ margin-bottom:.4rem; }}
 .st-key-casefile {{ border-left:5px solid var(--accent) !important; }}
-[class*="st-key-choice-"] {{ padding:24px 26px; border-top:4px solid var(--accent) !important; }}
-[class*="st-key-choice-"] h4 {{ font-size:1.35rem; margin-bottom:.4rem; }}
-[class*="st-key-step-"] {{ background:transparent; border:0 !important; border-left:3px solid var(--line) !important; border-radius:0; padding:2px 0 2px 16px; }}
-[class*="st-key-step-"] p {{ margin-bottom:.2rem; }}
-[data-testid="stColumn"]:has([class*="st-key-choice-"]) > [data-testid="stVerticalBlock"] {{ height:100%; }}
-[class*="st-key-choice-"] {{ min-height:250px; }}
 [class*="st-key-casecard-"] {{ min-height:340px; }}
+
+/* ---- landing page: finder panel that sits on the stripes */
+.st-key-finder {{ position:relative; z-index:2; width:calc(100% - 56px); margin:-4.9rem 28px 0; background:#fff; border:1px solid var(--line);
+  border-radius:14px; padding:20px 24px 22px; box-shadow:0 14px 34px rgba(16,36,58,.16); }}
+.st-key-finder h4 {{ margin:0 0 .1rem; font-size:1.2rem; }}
+.st-key-finder-note p {{ color:var(--muted); font-size:.93rem; margin:.2rem 0 0 28px; }}
+
+/* ---- landing page: what is tracked, reliability strip, ways in */
+.groups {{ display:grid; grid-template-columns:1fr 1fr; gap:22px 34px; }}
+.group h4 {{ margin:0 0 .4rem; padding-top:10px; border-top:2px solid var(--ink); font-size:1.02rem; }}
+.stApp .group ul {{ list-style:none; margin:0; padding:0; }}
+.stApp .group li {{ padding:5px 0; margin:0; border-bottom:1px solid var(--line); font-size:.96rem; }}
+.group li:last-child {{ border-bottom:0; }}
+[class*="st-key-promise-"] {{ border-left:3px solid var(--line); padding:2px 0 2px 18px; }}
+[class*="st-key-promise-"] p {{ margin-bottom:.25rem; }}
+[class*="st-key-way-"] {{ border-top:1px solid var(--line); padding:12px 0 6px; }}
+.st-key-way-last {{ border-bottom:1px solid var(--line); }}
+[class*="st-key-way-"] h4 {{ margin:0; font-size:1.05rem; }}
+[class*="st-key-way-"] p {{ margin:0; color:var(--muted); font-size:.95rem; }}
+
+/* ---- city & country page */
+.st-key-picker {{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px 20px 12px; margin-bottom:.6rem; }}
+[class*="st-key-vcard-"] {{ background:#fff; border:1px solid var(--line); border-top:4px solid var(--neutral);
+  border-radius:12px; padding:14px 16px 10px; gap:.35rem; }}
+[class*="st-key-vcard-up-"] {{ border-top-color:var(--up); }}
+[class*="st-key-vcard-down-"] {{ border-top-color:var(--down); }}
+
+.state-pill {{ display:inline-block; font-weight:600; font-size:.8rem; padding:2px 10px; border-radius:999px;
+  background:#E4EAEF; color:var(--ink); margin-right:8px; }}
+.state-up {{ background:#ECE6F5; color:#3F2670; }}
+.state-down {{ background:#FDEBDD; color:#8F3B00; }}
 
 /* ---- tabs */
 .stTabs [data-baseweb="tab-list"] {{ gap:6px; border-bottom:1px solid var(--line); }}
@@ -220,9 +259,11 @@ hr {{ border-color:var(--line); margin:1.4rem 0; }}
 .key i {{ display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; }}
 
 @media (max-width:640px) {{
-  .hero-body {{ padding:22px 20px 18px; }}
-  .hero-title {{ font-size:1.8rem; }}
-  .stripes {{ height:22px; }}
+  .hero-body {{ padding:26px 22px 22px; }}
+  .hero-title {{ font-size:2.1rem; }}
+  .stripes {{ height:80px; }}
+  .st-key-finder {{ width:calc(100% - 16px); margin:-3.2rem 8px 0; padding:16px 16px 18px; }}
+  .groups {{ grid-template-columns:1fr; }}
   .st-key-nav label {{ padding:7px 12px; }}
 }}
 </style>

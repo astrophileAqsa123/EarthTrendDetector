@@ -14,7 +14,8 @@ from ai_helper import AUDIENCES, AIUnavailable, ai_configured, explain_results
 from config import POWER_SOURCE, STORIES, TIME_WINDOWS, VARIABLES
 from data_fetcher import fetch_time_series
 from plain import confidence, fmt_abs, fmt_num, fmt_p, headline, robustness_sentence, template_narrative, tts_sentence
-from scanner import scan_grid, scan_variables
+import places
+from scanner import analyze_points, scan_grid, scan_variables
 from stats_engine import METHODS, add_anomalies, analyze_trend, robustness_summary, window_sensitivity
 
 SINGLE = "Single Location"
@@ -28,6 +29,10 @@ RESULTS = "views/results.py"
 SCANNER = "views/scanner.py"
 MAP = "views/regional_map.py"
 HOW = "views/how_it_works.py"
+PLACES = "views/places.py"
+
+KIND_CITY = "City"
+KIND_COUNTRY = "Whole country"
 
 COL_UP, COL_DOWN, COL_NS = ui.UP, ui.DOWN, ui.NEUTRAL
 TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
@@ -35,7 +40,7 @@ TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light
 ss = st.session_state
 
 # widget-backed settings that must survive moving between pages
-_PERSIST = ["mode", "level", "var_label", "year_range", "method_label"]
+_PERSIST = ["mode", "level", "var_label", "year_range", "method_label", "pl_kind", "pl_country", "pl_city", "pl_points"]
 
 
 def init_state():
@@ -48,6 +53,10 @@ def init_state():
     ss.setdefault("region_b", {"name": "Longyearbyen, Svalbard", "lat": 78.2232, "lon": 15.6267})
     ss.setdefault("last_click", None)
     ss.setdefault("story", None)
+    ss.setdefault("pl_kind", KIND_CITY)
+    ss.setdefault("pl_country", places.DEFAULT_COUNTRY)
+    ss.setdefault("pl_city", places.default_city(places.DEFAULT_COUNTRY))
+    ss.setdefault("pl_points", 6)
     # Streamlit drops a widget's value when its page is not shown. Re-assigning keeps it.
     for k in _PERSIST:
         ss[k] = ss[k]
@@ -85,6 +94,11 @@ def get_cached_grid(lat, lon, param, start_year, end_year, method, half_width, s
 
 
 @st.cache_data(ttl=86400, show_spinner=False)
+def get_cached_places(points: tuple, start_year, end_year, method):
+    return analyze_points(list(points), start_year, end_year, method)
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
 def get_cached_narrative(facts_json: str, audience: str) -> str:
     return explain_results(json.loads(facts_json), audience)
 
@@ -117,6 +131,21 @@ def sidebar():
                                           else "**off**. Set `GROQ_API_KEY` to turn on. A built-in explanation is used instead."))
 
 
+def sidebar_period():
+    """Sidebar for pages that analyse every variable at once: no question or place pickers, only how to read it."""
+    with st.sidebar:
+        st.radio("Display mode", ["Beginner", "Expert"], key="level", horizontal=True,
+                 help="Beginner uses everyday words. Expert shows the full statistics.")
+        st.header("Time period")
+        st.slider("Analysis period (years)", 1981, 2025, key="year_range")
+        if ss.year_range[1] - ss.year_range[0] + 1 < 10:
+            st.warning("Use 10+ years for reliable climate trends. Short periods are dominated by weather noise.")
+        if ss.level == "Expert":
+            st.header("Confidence test")
+            st.selectbox("Significance test", list(METHODS), key="method_label")
+            st.caption("Hamed-Rao corrects the p-value for autocorrelation (fewer false positives).")
+
+
 # ---------------------------------------------------------------- callbacks
 def load_story(name: str):
     s = STORIES[name]
@@ -133,6 +162,20 @@ def dismiss_story():
 
 def open_variable(label: str):
     ss.var_label = label
+
+
+def go_places(kind: str):
+    """Landing-page buttons: remember the choice and ask the City & country page to run straight away."""
+    ss.pl_kind = kind
+    ss.pl_autorun = True
+
+
+def open_city(region: dict, var_label: str):
+    """Send one city to the single-place Results page for a closer look at one variable."""
+    ss.region_a = dict(region)
+    ss.mode = SINGLE
+    ss.var_label = var_label
+    ss.story = None
 
 
 # ---------------------------------------------------------------- shared helpers
