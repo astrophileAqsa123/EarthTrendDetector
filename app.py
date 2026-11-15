@@ -8,13 +8,15 @@ st.set_page_config(page_title="Earth System Trend Detective", page_icon="🌍", 
 ui.inject_css()
 core.init_state()
 
+
 pages = [
     st.Page(core.HOME, title="Home", icon=":material/home:", default=True),
-    st.Page(core.RESULTS, title="Compare & Trends", icon=":material/monitoring:"),
-    st.Page(core.PLACES, title="City & country", icon=":material/location_city:"),
-    st.Page(core.SCANNER, title="Trend scanner", icon=":material/radar:"),
-    st.Page(core.MAP, title="Regional map", icon=":material/map:"),
+    st.Page(core.PLACES, title="Look up a place", icon=":material/location_city:"),
+    st.Page(core.RESULTS, title="Compare places", icon=":material/compare_arrows:"),
+    st.Page(core.SCANNER, title="Scan a place", icon=":material/radar:"),
+    st.Page(core.MAP, title="Map a region", icon=":material/map:"),
+    st.Page(core.CASES, title="Guided cases", icon=":material/travel_explore:"),
+    st.Page(core.BUILD, title="Build your own", icon=":material/tune:"),
     st.Page(core.HOW, title="How it works", icon=":material/help:"),
-    st.Page(core.CASES, title="Cases", icon=":material/travel_explore:"),
 ]
 st.navigation(pages, position="top").run()

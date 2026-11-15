@@ -73,20 +73,36 @@ def _stripes(n: int = 64) -> str:
     return "".join(cells)
 
 
-def hero(title: str, sub: str):
-    """Large banner for the landing page."""
+def hero(title: str, sub: str, eyebrow: str = "", chips: list | None = None):
+    """Large banner for the landing page. eyebrow = small product-name label above the title,
+    chips = short facts shown as pills under the text. (Built without blank lines on purpose:
+    a blank line would end the HTML block and Markdown would render the rest as code.)"""
+    eyebrow_html = f'<div class="hero-eyebrow">{eyebrow}</div>' if eyebrow else ""
+    chips_html = ('<div class="hero-chips">' + "".join(f"<span>{c}</span>" for c in chips) + "</div>") if chips else ""
     st.markdown(
-        f"""
-<div class="hero">
-  <div class="hero-body">
-    <div class="hero-title" role="heading" aria-level="1">{title}</div>
-    <p class="hero-sub">{sub}</p>
-  </div>
-  <div class="stripes" aria-hidden="true">{_stripes()}</div>
-</div>
-""", unsafe_allow_html=True)
+        '<div class="hero"><div class="hero-body">'
+        f'{eyebrow_html}'
+        f'<div class="hero-title" role="heading" aria-level="1">{title}</div>'
+        f'<p class="hero-sub">{sub}</p>'
+        f'{chips_html}'
+        '</div>'
+        f'<div class="stripes" aria-hidden="true">{_stripes()}</div></div>',
+        unsafe_allow_html=True)
 
 
+def section(title: str, sub: str = "", kicker: str = ""):
+    """Section heading for the landing page: small label, big title, optional one-line intro."""
+    k = f'<div class="kicker">{kicker}</div>' if kicker else ""
+    s = f'<p class="section-sub">{sub}</p>' if sub else ""
+    st.markdown(f'<div class="section-head">{k}<div class="section-title" role="heading" aria-level="2">{title}</div>{s}</div>',
+                unsafe_allow_html=True)
+
+
+def steps(items: list):
+    """Numbered 'how it works' list. items = [(title, text), ...]."""
+    html = "".join(f'<div class="step"><span class="step-n">{i}</span><div><b>{t}</b><p>{d}</p></div></div>'
+                   for i, (t, d) in enumerate(items, 1))
+    st.markdown(f'<div class="steps">{html}</div>', unsafe_allow_html=True)
 def variable_groups(variables: dict, categories: list) -> str:
     """HTML list of every tracked variable, grouped by topic. Built from config so it never goes out of date."""
     blocks = []
@@ -253,7 +269,41 @@ html, body, .stApp, [data-testid="stAppViewContainer"], .stApp button, .stApp in
 [data-testid="stExpander"] summary p {{ font-weight:600; }}
 [data-testid="stDataFrame"] {{ border:1px solid var(--line); border-radius:10px; overflow:hidden; }}
 hr {{ border-color:var(--line); margin:1.4rem 0; }}
+/* ---- landing page v2: hero label + chips, section headings, tool cards, steps */
+.hero-eyebrow {{ display:inline-block; font-size:.78rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
+  color:#9FC3D6; border:1px solid rgba(159,195,214,.38); border-radius:999px; padding:4px 12px; margin-bottom:1.1rem; }}
+.hero-title {{ max-width:17ch; }}
+.hero-chips {{ display:flex; flex-wrap:wrap; gap:8px 10px; margin-top:1.4rem; }}
+.hero-chips span {{ font-size:.88rem; font-weight:500; color:#DCE6EE; background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.16); border-radius:999px; padding:5px 14px; }}
 
+.section-head {{ margin:2.4rem 0 1rem; }}
+.kicker {{ font-size:.78rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin-bottom:.2rem; }}
+.section-title {{ font-family:'Bricolage Grotesque', {FONT_STACK}; font-weight:700; font-size:1.75rem;
+  letter-spacing:-0.02em; line-height:1.15; color:var(--ink); }}
+.stApp .section-head p.section-sub {{ margin:.5rem 0 0; color:var(--muted); font-size:1rem; max-width:62ch; }}
+
+[data-testid="stColumn"]:has([class*="st-key-tool-"]) > [data-testid="stVerticalBlock"] {{ height:100%; }}
+[class*="st-key-tool-"] {{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:20px 22px 18px;
+  height:100%; min-height:236px; gap:.3rem; transition:border-color .15s, box-shadow .15s, transform .15s; }}
+[class*="st-key-tool-"]:hover {{ border-color:var(--accent); box-shadow:0 10px 26px rgba(16,36,58,.10); transform:translateY(-2px); }}
+/* Streamlit gives each markdown block a -1rem bottom offset that cancels the paragraph's 1rem margin,
+   so keep margin-bottom at 1rem here (setting it to 0 makes the blocks collapse and overlap the button). */
+[class*="st-key-tool-"] [data-testid="stMarkdownContainer"] h4 {{ margin:0 0 1rem; padding:0; font-size:1.2rem; }}
+[class*="st-key-tool-"] [data-testid="stMarkdownContainer"] p {{ margin:0 0 1rem; color:var(--muted); font-size:.95rem; }}
+.stApp [class*="st-key-tool-"] [data-testid="stMarkdownContainer"] p.tool-q {{ color:var(--accent); font-weight:600; font-size:.9rem; margin:0 0 1rem; }}
+[class*="st-key-tool-"] button [data-testid="stMarkdownContainer"] p {{ margin:0; font-size:inherit; color:inherit; }}
+[class*="st-key-tool-"] > * {{ flex-shrink:0; }}
+.stElementContainer[class*="st-key-go_tool_"] {{ margin-top:auto; }}
+@media (prefers-reduced-motion: reduce) {{ [class*="st-key-tool-"] {{ transition:none; }} [class*="st-key-tool-"]:hover {{ transform:none; }} }}
+
+.steps {{ display:flex; flex-direction:column; gap:20px; }}
+.step {{ display:flex; gap:16px; align-items:flex-start; }}
+.step-n {{ flex:none; width:34px; height:34px; border-radius:50%; background:var(--ink); color:#fff; display:flex;
+  align-items:center; justify-content:center; font-family:'Bricolage Grotesque', {FONT_STACK}; font-weight:700; }}
+.step b {{ font-family:'Bricolage Grotesque', {FONT_STACK}; font-size:1.1rem; color:var(--ink); }}
+.stApp .step p {{ margin:.15rem 0 0; color:var(--muted); font-size:.96rem; }}
+.sample-tag {{ font-size:.75rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:.3rem; }}
 /* ---- colour key */
 .key {{ display:flex; flex-wrap:wrap; gap:6px 18px; font-size:.85rem; color:var(--muted); margin:.2rem 0 .6rem; }}
 .key i {{ display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; }}
@@ -265,6 +315,9 @@ hr {{ border-color:var(--line); margin:1.4rem 0; }}
   .st-key-finder {{ width:calc(100% - 16px); margin:-3.2rem 8px 0; padding:16px 16px 18px; }}
   .groups {{ grid-template-columns:1fr; }}
   .st-key-nav label {{ padding:7px 12px; }}
+  .section-title {{ font-size:1.4rem; }}
+  .hero-title {{ max-width:none; }}
+  [class*="st-key-tool-"] {{ min-height:0; }}
 }}
 </style>
 """
